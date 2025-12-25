@@ -1,13 +1,20 @@
-export function showAlert(container, type, text) {
+export function showAlert(container, type, message, { asHtml = false } = {}) {
   container.innerHTML = `
     <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-      ${escapeHtml(text)}
+      <div class="alert-message"></div>
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
   `;
+
+  const msgEl = container.querySelector(".alert-message");
+  if (asHtml) {
+    msgEl.innerHTML = message;        // интерпретирует <br/>, <ul>, ...
+  } else {
+    msgEl.textContent = message;      // безопасно, без HTML
+  }
 }
 
-function escapeHtml(str = "") {
+export function escapeHtml(str = "") {
   return str.replace(
     /[&<>"']/g,
     (m) =>

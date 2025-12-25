@@ -3,6 +3,12 @@ import { showAlert } from "../ui.js";
 
 const form = document.getElementById("loginForm");
 const alertBox = document.getElementById("alertBox");
+const flash = sessionStorage.getItem("flash");
+
+if (flash) {
+  sessionStorage.removeItem("flash");
+  showAlert(alertBox, "success", flash);
+}
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
