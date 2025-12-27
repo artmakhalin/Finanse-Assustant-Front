@@ -1,4 +1,4 @@
-import { login, ApiError } from "../api.js";
+import { login } from "../api.js";
 import { showAlert } from "../ui.js";
 
 const form = document.getElementById("loginForm");
@@ -21,19 +21,9 @@ form.addEventListener("submit", async (e) => {
   };
 
   try {
-    const ok = await login(payload);
-
-    // после логина — на accounts
-    if (ok) {
-      window.location.href = "accounts.html";
-    } else {
-      showAlert(alertBox, "danger", "Incorrect email or password");
-    }
+    await login(payload);
+    window.location.href = "accounts.html";
   } catch (err) {
-    if (err instanceof ApiError) {
-      showAlert(alertBox, "danger", err.body?.message || "Ошибка входа");
-    } else {
-      showAlert(alertBox, "danger", "Неизвестная ошибка");
-    }
+    showAlert(alertBox, "danger", err.message || "Login error");
   }
 });

@@ -1,5 +1,5 @@
 import { request, ApiError } from "../api.js";
-import { showAlert, escapeHtml } from "../ui.js";
+import { showAlert, showApiError } from "../ui.js";
 
 const labels = {
   firstName: "First name",
@@ -54,34 +54,10 @@ form.addEventListener("submit", async (e) => {
     );
     window.location.href = "login.html";
   } catch (err) {
-    if (err instanceof ApiError) {
-      let msg = "";
-      if (err.body.errors) {
-        const html = `
-        <div class="fw-semibold mb-1">Please fix:</div>
-        <ul class="mb-0">
-            ${err.body.errors
-            .map(
-                (e) =>
-                `<li><b>${labels[e.field] ?? e.field}</b>: ${escapeHtml(
-                    e.message
-                )}</li>`
-            )
-            .join("")}
-        </ul>
-        `;
-
-        showAlert(alertBox, "danger", html, { asHtml: true });
-      } else {
-        showAlert(
-          alertBox,
-          "danger",
-          err.body?.message || "Error during registration"
-        );
-      }
-    } else {
-      showAlert(alertBox, "danger", "Unknown error");
-    }
+    showApiError(err, alertBox, {
+      fallback: "Error during registration",
+      labels
+    });
   } finally {
     btnSubmit.disabled = false;
   }

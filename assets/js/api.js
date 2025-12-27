@@ -2,36 +2,60 @@ import { API_BASE } from "./config.js";
 
 export class ApiError extends Error {
   constructor(status, body) {
-    super(body?.message || `HTTP ${status}`);
+    const message =
+      body && typeof body === "object" && body.message
+        ? body.message
+        : typeof body === "string" && body.trim()
+        ? body
+        : `HTTP ${status}`;
+
+    super(message);
     this.status = status;
     this.body = body;
   }
 }
 
-export async function request(path, { method = "GET", body } = {}) {
+async function readBody(res) {
+  const ct = (res.headers.get("content-type") || "").toLowerCase();
+  try {
+    if (ct.includes("application/json")) return await res.json();
+    const text = await res.text();
+    return text;
+  } catch {
+    return null;
+  }
+}
+
+export async function request(
+  path,
+  { method = "GET", body, headers, rawBody } = {}
+) {
+  const hasJsonBody = body !== undefined && body !== null;
+
   const res = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
+    headers: {
+      ...(hasJsonBody ? { "Content-Type": "application/json" } : {}),
+      ...(headers || {}),
+    },
+    body: rawBody ?? (hasJsonBody ? JSON.stringify(body) : undefined),
     credentials: "include",
   });
 
-  const contentType = res.headers.get("content-type") || "";
-  const data = contentType.includes("application/json")
-    ? await res.json()
-    : await res.text();
+  const data = await readBody(res);
 
   if (!res.ok) throw new ApiError(res.status, data);
   return data;
 }
 
 export async function login({ email, password }) {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
+  const form = new URLSearchParams({ email, password });
+
+  await request("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ email, password }), // т.к. ты usernameParameter("email")
-    credentials: "include",
+    rawBody: form,
   });
-  
-  return res.status === 200;
+
+  return true;
 }
