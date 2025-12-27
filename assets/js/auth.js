@@ -1,10 +1,14 @@
-import { request } from "./api.js";
+import { request, ApiError } from "./api.js";
 
 export async function requireAuth() {
   try {
-    await request("/api/get-user-info"); 
+    await request("/api/get-user-info");
   } catch (e) {
-    window.location.href = "login.html";
+    if (e instanceof ApiError && e.status === 401) {
+      window.location.href = "login.html";
+      return;
+    }
+    console.error(e);
   }
 }
 

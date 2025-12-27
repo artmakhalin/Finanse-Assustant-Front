@@ -23,6 +23,163 @@
     <title>Finance</title>
   </head>
   <body>
-    <div id="alertBox"></div>
+    <nav class="navbar navbar-expand-lg bg-white border-bottom">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">Finance</a>
+        <div class="ms-auto">
+          <a class="btn btn-outline-primary btn-sm" href="login.html">Logout</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container py-5" style="max-width: 520px">
+      <div class="accounts-header">
+        <h1 class="h3 mb-3">My Accounts</h1>
+        <button
+          type="button"
+          class="btn btn-primary"
+          data-bs-toggle="modal"
+          data-bs-target="#addAccountModal"
+        >
+          +
+        </button>
+      </div>
+      <div id="alertBox"></div>
+      <div class="row" id="accountsDiv"></div>
+
+      <!-- Modal Add Account -->
+      <div
+        class="modal fade"
+        id="addAccountModal"
+        tabindex="-1"
+        aria-labelledby="exampleModalLabel"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="exampleModalLabel">
+                Create New Account
+              </h1>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div id="alertBoxModalCreate"></div>
+            <div class="modal-body">
+              <form id="createAccountForm" class="card card-body shadow-sm">
+                <div class="mb-3">
+                  <label class="form-label">Title</label>
+                  <input
+                    class="form-control"
+                    name="accountName"
+                    type="text"
+                    required
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Start balance</label>
+                  <input
+                    class="form-control"
+                    name="balance"
+                    type="number"
+                    required
+                    min="0"
+                    max="1000000000"
+                  />
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    class="btn btn-primary"
+                    type="submit"
+                    id="addAccountBtn"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Edit Account -->
+      <div
+        class="modal fade"
+        id="editAccountModal"
+        tabindex="-1"
+        aria-labelledby="exampleModalLabel"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="exampleModalLabel">
+                Edit Account
+              </h1>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div id="alertBoxModalEdit"></div>
+            <div class="modal-body">
+              <form id="editAccountForm" class="card card-body shadow-sm">
+                <div class="mb-3">
+                  <label class="form-label">New Title</label>
+                  <input
+                    id="newAccountName"
+                    class="form-control"
+                    name="newAccountName"
+                    type="text"
+                    required
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">New balance</label>
+                  <input
+                    id="newBalance"
+                    class="form-control"
+                    name="newBalance"
+                    type="number"
+                    required
+                    min="0"
+                    max="1000000000"
+                  />
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    class="btn btn-primary"
+                    type="submit"
+                    id="saveAccountBtn"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
   </body>
 </html>
