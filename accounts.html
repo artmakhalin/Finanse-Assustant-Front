@@ -32,20 +32,75 @@
       </div>
     </nav>
 
-    <main class="container py-5" style="max-width: 520px">
-      <div class="accounts-header">
-        <h1 class="h3 mb-3">My Accounts</h1>
-        <button
-          type="button"
-          class="btn btn-primary"
-          data-bs-toggle="modal"
-          data-bs-target="#addAccountModal"
-        >
-          +
-        </button>
-      </div>
-      <div id="alertBox"></div>
-      <div class="row" id="accountsDiv"></div>
+    <main class="container-lg py-5">
+      <div id="alertBox" class="mb-3"></div>
+
+      <!-- Income -->
+      <section class="section-card mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h4 mb-0">Income</h2>
+          <button
+            id="createIncomeBtn"
+            data-opener-id="INCOME"
+            type="button"
+            class="btn btn-primary btn-icon"
+            data-bs-toggle="modal"
+            data-bs-target="#addCategoryModal"
+            aria-label="Add income category"
+          >
+            +
+          </button>
+        </div>
+
+        <div
+          class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3"
+          id="incomeDiv"
+        ></div>
+      </section>
+
+      <!-- Accounts -->
+      <section class="section-card mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h4 mb-0">Accounts</h2>
+          <button
+            type="button"
+            class="btn btn-primary btn-icon"
+            data-bs-toggle="modal"
+            data-bs-target="#addAccountModal"
+            aria-label="Add account"
+          >
+            +
+          </button>
+        </div>
+
+        <div
+          class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3"
+          id="accountsDiv"
+        ></div>
+      </section>
+
+      <!-- Expenses -->
+      <section class="section-card">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h4 mb-0">Expenses</h2>
+          <button
+            id="createExpenseBtn"
+            data-opener-id="EXPENSE"
+            type="button"
+            class="btn btn-primary btn-icon"
+            data-bs-toggle="modal"
+            data-bs-target="#addCategoryModal"
+            aria-label="Add expense category"
+          >
+            +
+          </button>
+        </div>
+
+        <div
+          class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3"
+          id="expensesDiv"
+        ></div>
+      </section>
 
       <!-- Modal Add Account -->
       <div
@@ -68,9 +123,9 @@
                 aria-label="Close"
               ></button>
             </div>
-            <div id="alertBoxModalCreate"></div>
+            <div id="alertBoxModalCreateAccount"></div>
             <div class="modal-body">
-              <form id="createAccountForm" class="card card-body shadow-sm">
+              <form id="createAccountForm" class="vstack gap-3">
                 <div class="mb-3">
                   <label class="form-label">Title</label>
                   <input
@@ -78,6 +133,7 @@
                     name="accountName"
                     type="text"
                     required
+                    autofocus
                   />
                 </div>
                 <div class="mb-3">
@@ -134,9 +190,9 @@
                 aria-label="Close"
               ></button>
             </div>
-            <div id="alertBoxModalEdit"></div>
+            <div id="alertBoxModalEditAccount"></div>
             <div class="modal-body">
-              <form id="editAccountForm" class="card card-body shadow-sm">
+              <form id="editAccountForm" class="vstack gap-3">
                 <div class="mb-3">
                   <label class="form-label">New Title</label>
                   <input
@@ -145,6 +201,7 @@
                     name="newAccountName"
                     type="text"
                     required
+                    autofocus
                   />
                 </div>
                 <div class="mb-3">
@@ -171,6 +228,62 @@
                     class="btn btn-primary"
                     type="submit"
                     id="saveAccountBtn"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Add Category -->
+      <div
+        class="modal fade"
+        id="addCategoryModal"
+        tabindex="-1"
+        aria-labelledby="exampleModalLabel"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="exampleModalLabel">
+                Create Category
+              </h1>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div id="alertBoxModalCreateCategory"></div>
+            <div class="modal-body">
+              <form id="createCategoryForm" class="vstack gap-3">
+                <div class="mb-3">
+                  <label class="form-label">Title</label>
+                  <input
+                    class="form-control"
+                    name="description"
+                    type="text"
+                    required
+                    autofocus
+                  />
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    class="btn btn-primary"
+                    type="submit"
+                    id="addCategoryBtn"
                   >
                     Submit
                   </button>
