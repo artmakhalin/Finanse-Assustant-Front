@@ -1,13 +1,16 @@
-import { requireAuth } from "../auth.js";
+import { requireAuth, logout } from "../auth.js";
 import { request } from "../api.js";
 import { showAlert, showApiError } from "../ui.js";
 import { API_ACCOUNTS } from "../config.js";
 import { API_CATEGORIES } from "../config.js";
 
-const labels = {
+const fieldLabels = {
   accountName: "Account title",
   balance: "Balance",
   description: "Category description",
+};
+
+const typeLabels = {
   INCOME: "income",
   EXPENSE: "expenses",
 };
@@ -16,8 +19,10 @@ const labels = {
 await requireAuth();
 
 //DOM
+const btnLogout = document.getElementById("btnLogout");
 const addAccountForm = document.getElementById("createAccountForm");
 const addCategoryForm = document.getElementById("createCategoryForm");
+const categoryOpeners = document.querySelectorAll("[data-opener-id]");
 const editAccountForm = document.getElementById("editAccountForm");
 const alertBox = document.getElementById("alertBox");
 const alertBoxModalCreateAccount = document.getElementById(
@@ -46,16 +51,18 @@ const categoriesByType = {
 let editingAccountId = null;
 let currentCategoryType = null;
 
-//Init
-await init();
+//Start Page
+await startPage();
 
-async function init() {
+async function startPage() {
   bindEvents();
   await Promise.all([loadAccounts(), loadCategories()]);
 }
 
 //Events
 function bindEvents() {
+  btnLogout.addEventListener("click", async () => await logout());
+
   addAccountForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     alertBoxModalCreateAccount.innerHTML = "";
@@ -91,16 +98,16 @@ function bindEvents() {
     } catch (err) {
       showApiError(err, alertBoxModalCreateAccount, {
         fallback: "Error when creating account",
-        labels,
+        fieldLabels,
       });
     }
   });
 
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("#createIncomeBtn, #createExpenseBtn");
-    if (!btn) return;
-    currentCategoryType = btn.dataset.openerId;
-  });
+  for (const btn of categoryOpeners) {
+    btn.addEventListener("click", () => {
+      currentCategoryType = btn.dataset.openerId;
+    });
+  }
 
   addCategoryForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -142,9 +149,15 @@ function bindEvents() {
     } catch (err) {
       showApiError(err, alertBoxModalCreateCategory, {
         fallback: "Error when creating category",
-        labels,
+        fieldLabels,
       });
     }
+  });
+
+  addCategoryModal.addEventListener("hidden.bs.modal", () => {
+    currentCategoryType = null;
+    addCategoryForm.reset();
+    alertBoxModalCreateCategory.innerHTML = "";
   });
 
   accountsDiv.addEventListener("click", (e) => {
@@ -190,25 +203,26 @@ async function loadAccounts() {
   } catch (err) {
     showApiError(err, alertBox, {
       fallback: "Error when loading account",
-      labels,
+      fieldLabels,
     });
   }
 }
 
 async function loadCategories() {
   try {
-    const dataIncome = await request(`${API_CATEGORIES}/filter?type=INCOME`);
-    const dataExpense = await request(`${API_CATEGORIES}/filter?type=EXPENSE`);
+    const types = ["INCOME", "EXPENSE"];
+    const results = await Promise.all(
+      types.map((t) => request(`${API_CATEGORIES}?type=${t}`))
+    );
 
-    categoriesByType.INCOME = dataIncome.list;
-    categoriesByType.EXPENSE = dataExpense.list;
-
-    renderCategories(categoriesByType.INCOME, "INCOME");
-    renderCategories(categoriesByType.EXPENSE, "EXPENSE");
+    types.forEach((t, i) => {
+      categoriesByType[t] = results[i].list;
+      renderCategories(categoriesByType[t], t);
+    });
   } catch (err) {
     showApiError(err, alertBox, {
       fallback: "Error when loading categories",
-      labels,
+      fieldLabels,
     });
   }
 }
@@ -223,7 +237,7 @@ async function deleteAccount(id) {
   } catch (err) {
     showApiError(err, alertBox, {
       fallback: "Error when deleting account",
-      labels,
+      fieldLabels,
     });
   }
 }
@@ -262,7 +276,7 @@ async function updateAccount(currentAccount) {
   } catch (err) {
     showApiError(err, alertBoxModalEditAccount, {
       fallback: "Error when updating account",
-      labels,
+      fieldLabels,
     });
   }
 }
@@ -283,12 +297,12 @@ function renderAccounts(accounts) {
 }
 
 function renderCategories(categories, type) {
-  const container = type === "INCOME" ? incomeDiv : expensesDiv;
+  const container = getContainerByType(type);
   container.innerHTML = "";
 
   if (categories.length == 0) {
     const msgNoCategories = document.createElement("p");
-    msgNoCategories.textContent = `You don't have any ${labels[type]}`;
+    msgNoCategories.textContent = `You don't have any ${typeLabels[type]}`;
     container.appendChild(msgNoCategories);
   } else {
     for (const category of categories) {
@@ -403,4 +417,15 @@ function validateBalance(formData, fieldName, box) {
     return null;
   }
   return balance;
+}
+
+function getContainerByType(type) {
+  switch (type) {
+    case "INCOME":
+      return incomeDiv;
+    case "EXPENSE":
+      return expensesDiv;
+    default:
+      throw new Error(`Unsupported category type: ${type}`);
+  }
 }

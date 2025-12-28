@@ -13,7 +13,10 @@ export async function requireAuth() {
 }
 
 export async function logout() {
-  // если есть endpoint logout:
-  // await request("/logout", { method: "POST" });
-  window.location.href = "login.html";
+  try {
+    await request("/api/auth/logout", { method: "POST" });
+    window.location.href = "login.html";
+  } catch (err) {
+    console.error(err);
+  }
 }
