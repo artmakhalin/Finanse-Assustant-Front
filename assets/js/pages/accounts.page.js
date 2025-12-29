@@ -4,6 +4,7 @@ import { showAlert, showApiError } from "../ui.js";
 import { API_ACCOUNTS } from "../config.js";
 import { API_CATEGORIES } from "../config.js";
 
+//Const / Labels
 const fieldLabels = {
   accountName: "Account title",
   balance: "Balance",
@@ -15,15 +16,17 @@ const typeLabels = {
   EXPENSE: "expenses",
 };
 
-//Guard
-await requireAuth();
+const CATEGORY_TYPES = ["INCOME", "EXPENSE"];
 
 //DOM
 const btnLogout = document.getElementById("btnLogout");
+
 const addAccountForm = document.getElementById("createAccountForm");
 const addCategoryForm = document.getElementById("createCategoryForm");
-const categoryOpeners = document.querySelectorAll("[data-opener-id]");
 const editAccountForm = document.getElementById("editAccountForm");
+
+const categoryOpeners = document.querySelectorAll("[data-opener-id]");
+
 const alertBox = document.getElementById("alertBox");
 const alertBoxModalCreateAccount = document.getElementById(
   "alertBoxModalCreateAccount"
@@ -34,9 +37,11 @@ const alertBoxModalCreateCategory = document.getElementById(
 const alertBoxModalEditAccount = document.getElementById(
   "alertBoxModalEditAccount"
 );
+
 const accountsDiv = document.getElementById("accountsDiv");
 const incomeDiv = document.getElementById("incomeDiv");
 const expensesDiv = document.getElementById("expensesDiv");
+
 const addAccountModal = document.getElementById("addAccountModal");
 const editAccountModal = document.getElementById("editAccountModal");
 const addCategoryModal = document.getElementById("addCategoryModal");
@@ -52,6 +57,7 @@ let editingAccountId = null;
 let currentCategoryType = null;
 
 //Start Page
+await requireAuth();
 await startPage();
 
 async function startPage() {
@@ -61,9 +67,29 @@ async function startPage() {
 
 //Events
 function bindEvents() {
-  btnLogout.addEventListener("click", async () => await logout());
+  btnLogout.addEventListener("click", onLogoutClick);
 
-  addAccountForm.addEventListener("submit", async (e) => {
+  addAccountForm.addEventListener("submit", onCreateAccountSubmit);
+  editAccountForm.addEventListener("submit", onEditAccountSubmit);
+  addCategoryForm.addEventListener("submit", onCreateCategorySubmit);
+
+  for (const btn of categoryOpeners) {
+    btn.addEventListener("click", onCategoryOpenerClick);
+  }
+
+  addCategoryModal.addEventListener("hidden.bs.modal", onCategoryModalHidden);
+
+  accountsDiv.addEventListener("click", onAccountsClick);
+
+  // на будущее (когда добавишь edit/delete категорий)
+  incomeDiv.addEventListener("click", onCategoriesClick);
+  expensesDiv.addEventListener("click", onCategoriesClick);
+
+  async function onLogoutClick() {
+    await logout();
+  }
+
+  async function onCreateAccountSubmit(e) {
     e.preventDefault();
     alertBoxModalCreateAccount.innerHTML = "";
 
@@ -101,15 +127,19 @@ function bindEvents() {
         fieldLabels,
       });
     }
-  });
-
-  for (const btn of categoryOpeners) {
-    btn.addEventListener("click", () => {
-      currentCategoryType = btn.dataset.openerId;
-    });
   }
 
-  addCategoryForm.addEventListener("submit", async (e) => {
+  async function onEditAccountSubmit(e) {
+    e.preventDefault();
+    if (!editingAccountId) return;
+    const currentAccount = accountsCache.find(
+      (acc) => acc.accountId == editingAccountId
+    );
+
+    await updateAccount(currentAccount);
+  }
+
+  async function onCreateCategorySubmit(e) {
     e.preventDefault();
     alertBoxModalCreateCategory.innerHTML = "";
 
@@ -152,15 +182,19 @@ function bindEvents() {
         fieldLabels,
       });
     }
-  });
+  }
 
-  addCategoryModal.addEventListener("hidden.bs.modal", () => {
+  function onCategoryOpenerClick(e) {
+    currentCategoryType = e.currentTarget.dataset.openerId;
+  }
+
+  function onCategoryModalHidden() {
     currentCategoryType = null;
     addCategoryForm.reset();
     alertBoxModalCreateCategory.innerHTML = "";
-  });
+  }
 
-  accountsDiv.addEventListener("click", (e) => {
+  function onAccountsClick(e) {
     const editBtn = e.target.closest("button.account-edit");
     const deleteBtn = e.target.closest("button.account-delete");
 
@@ -181,17 +215,22 @@ function bindEvents() {
       newNameInput.value = currentAccount.accountName;
       newBalanceInput.value = currentAccount.balance;
     }
-  });
+  }
 
-  editAccountForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!editingAccountId) return;
-    const currentAccount = accountsCache.find(
-      (acc) => acc.accountId == editingAccountId
-    );
+  function onCategoriesClick(e) {
+    const editBtn = e.target.closest("button.category-edit");
+    const deleteBtn = e.target.closest("button.category-delete");
 
-    await updateAccount(currentAccount);
-  });
+    if (deleteBtn) {
+      // TODO: deleteCategory(deleteBtn.dataset.id)
+      return;
+    }
+
+    if (editBtn) {
+      // TODO: open edit modal + set editingCategoryId
+      return;
+    }
+  }
 }
 
 //Business logic
@@ -210,12 +249,11 @@ async function loadAccounts() {
 
 async function loadCategories() {
   try {
-    const types = ["INCOME", "EXPENSE"];
     const results = await Promise.all(
-      types.map((t) => request(`${API_CATEGORIES}?type=${t}`))
+      CATEGORY_TYPES.map((t) => request(`${API_CATEGORIES}?type=${t}`))
     );
 
-    types.forEach((t, i) => {
+    CATEGORY_TYPES.forEach((t, i) => {
       categoriesByType[t] = results[i].list;
       renderCategories(categoriesByType[t], t);
     });
@@ -283,128 +321,60 @@ async function updateAccount(currentAccount) {
 
 //Render
 function renderAccounts(accounts) {
-  accountsDiv.innerHTML = "";
-
-  if (accounts.length == 0) {
-    const msgNoAccounts = document.createElement("p");
-    msgNoAccounts.textContent = "You don't have any accounts";
-    accountsDiv.appendChild(msgNoAccounts);
-  } else {
-    for (const account of accounts) {
-      renderAccountCard(account);
-    }
-  }
+  renderList(
+    accountsDiv,
+    accounts,
+    (a) =>
+      buildCard({
+        id: a.accountId,
+        title: a.accountName,
+        subtitle: a.balance,
+        deleteClass: "account-delete",
+        editClass: "account-edit",
+        editTarget: "#editAccountModal",
+        titleClass: "card-title mb-0 text-truncate",
+        bodyClass: "card-body d-flex flex-column",
+      }),
+    "You don't have any accounts"
+  );
 }
 
 function renderCategories(categories, type) {
   const container = getContainerByType(type);
   container.innerHTML = "";
 
-  if (categories.length == 0) {
-    const msgNoCategories = document.createElement("p");
-    msgNoCategories.textContent = `You don't have any ${typeLabels[type]}`;
-    container.appendChild(msgNoCategories);
-  } else {
-    for (const category of categories) {
-      renderCategoryCard(container, category);
-    }
+  renderList(
+    container,
+    categories,
+    (c) =>
+      buildCard({
+        id: c.categoryId,
+        title: c.description,
+        deleteClass: "category-delete",
+        editClass: "category-edit",
+        titleClass: "card-title mb-0 text-truncate-2",
+        bodyClass: "card-body py-3 d-flex flex-column",
+      }),
+    `You don't have any ${typeLabels[type]}`
+  );
+}
+
+function renderList(container, items, renderItem, emptyText) {
+  container.innerHTML = "";
+
+  if (!items?.length) {
+    container.appendChild(
+      el("p", { text: emptyText, className: "text-muted mb-0" })
+    );
+    return;
   }
+
+  const frag = document.createDocumentFragment();
+  for (const item of items) frag.appendChild(renderItem(item));
+  container.appendChild(frag);
 }
 
-function renderAccountCard(account) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "col";
-  wrapper.dataset.id = account.accountId;
-  accountsDiv.appendChild(wrapper);
-
-  const card = document.createElement("div");
-  card.className = "card h-100";
-  wrapper.appendChild(card);
-
-  const cardBody = document.createElement("div");
-  cardBody.className = "card-body d-flex flex-column";
-  card.appendChild(cardBody);
-
-  const head = document.createElement("div");
-  head.className = "d-flex align-items-start justify-content-between gap-2";
-  cardBody.appendChild(head);
-
-  const cardTitle = document.createElement("h5");
-  cardTitle.className = "card-title mb-0 text-truncate";
-  cardTitle.textContent = account.accountName;
-  head.appendChild(cardTitle);
-
-  const cardText = document.createElement("p");
-  cardText.className = "card-text mt-2 mb-3 fw-semibold fs-5";
-  cardText.textContent = account.balance;
-  cardBody.appendChild(cardText);
-
-  const actions = document.createElement("div");
-  actions.className = "d-flex gap-2 flex-shrink-0";
-  head.appendChild(actions);
-
-  const btnRemove = document.createElement("button");
-  btnRemove.className =
-    "btn btn-outline-danger btn-sm rounded-3 action-btn account-delete";
-  btnRemove.dataset.id = account.accountId;
-  btnRemove.textContent = "X";
-  actions.appendChild(btnRemove);
-
-  const btnEdit = document.createElement("button");
-  btnEdit.className =
-    "btn btn-outline-secondary btn-sm rounded-3 action-btn account-edit";
-  btnEdit.dataset.id = account.accountId;
-  btnEdit.setAttribute("data-bs-toggle", "modal");
-  btnEdit.setAttribute("data-bs-target", "#editAccountModal");
-  btnEdit.textContent = "...";
-  actions.appendChild(btnEdit);
-}
-
-function renderCategoryCard(container, category) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "col";
-  wrapper.dataset.id = category.categoryId;
-  container.appendChild(wrapper);
-
-  const card = document.createElement("div");
-  card.className = "card h-100";
-  wrapper.appendChild(card);
-
-  const cardBody = document.createElement("div");
-  cardBody.className = "card-body py-3 d-flex flex-column";
-  card.appendChild(cardBody);
-
-  const head = document.createElement("div");
-  head.className = "d-flex align-items-start justify-content-between gap-2";
-  cardBody.appendChild(head);
-
-  const cardTitle = document.createElement("h5");
-  cardTitle.className = "card-title mb-0 text-truncate-2";
-  cardTitle.textContent = category.description;
-  head.appendChild(cardTitle);
-
-  const actions = document.createElement("div");
-  actions.className = "d-flex gap-2 flex-shrink-0";
-  head.appendChild(actions);
-
-  const btnRemove = document.createElement("button");
-  btnRemove.className =
-    "btn btn-outline-danger btn-sm rounded-3 action-btn category-delete";
-  btnRemove.dataset.id = category.categoryId;
-  btnRemove.textContent = "X";
-  actions.appendChild(btnRemove);
-
-  const btnEdit = document.createElement("button");
-  btnEdit.className =
-    "btn btn-outline-secondary btn-sm rounded-3 action-btn category-edit";
-  btnEdit.dataset.id = category.categoryId;
-  // btnEdit.setAttribute("data-bs-toggle", "modal");
-  // btnEdit.setAttribute("data-bs-target", "#editCategoryModal");
-  btnEdit.textContent = "...";
-  actions.appendChild(btnEdit);
-}
-
-//helper
+//Helpers
 function hideModal(modal) {
   const thisModal = bootstrap.Modal.getOrCreateInstance(modal);
   thisModal.hide();
@@ -428,4 +398,93 @@ function getContainerByType(type) {
     default:
       throw new Error(`Unsupported category type: ${type}`);
   }
+}
+
+//UI Builders
+function el(tag, { className, text, attrs, dataset } = {}, children = []) {
+  const node = document.createElement(tag);
+
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  }
+
+  if (dataset) {
+    for (const [k, v] of Object.entries(dataset)) node.dataset[k] = v;
+  }
+
+  for (const child of children) node.appendChild(child);
+  return node;
+}
+
+function createActions({ id, deleteClass, editClass, editTarget } = {}) {
+  const actions = el("div", { className: "d-flex gap-2 flex-shrink-0" });
+
+  const btnRemove = el("button", {
+    className: `btn btn-outline-danger btn-sm rounded-3 action-btn ${deleteClass}`,
+    text: "X",
+    dataset: { id },
+    attrs: { type: "button" },
+  });
+
+  const btnEdit = el("button", {
+    className: `btn btn-outline-secondary btn-sm rounded-3 action-btn ${editClass}`,
+    text: "...",
+    dataset: { id },
+    attrs: { type: "button" },
+  });
+
+  if (editTarget) {
+    btnEdit.setAttribute("data-bs-toggle", "modal");
+    btnEdit.setAttribute("data-bs-target", editTarget);
+  }
+
+  actions.append(btnRemove, btnEdit);
+  return actions;
+}
+
+function buildCard({
+  id,
+  title,
+  titleClass = "card-title mb-0 text-truncate",
+  bodyClass = "card-body d-flex flex-column",
+  subtitle, // опционально (например баланс)
+  subtitleClass = "card-text mt-2 mb-3",
+  deleteClass,
+  editClass,
+  editTarget, // например "#editAccountModal"
+} = {}) {
+  const head = el("div", {
+    className: "d-flex align-items-start justify-content-between gap-2",
+  });
+
+  const h5 = el("h5", { className: titleClass, text: title });
+  const actions = createActions({ id, deleteClass, editClass, editTarget });
+
+  head.append(h5, actions);
+
+  const bodyChildren = [head];
+
+  if (subtitle != null) {
+    bodyChildren.push(
+      el("p", { className: subtitleClass, text: String(subtitle) })
+    );
+  }
+
+  const cardBody = el("div", { className: bodyClass }, bodyChildren);
+
+  const card = el("div", { className: "card h-100" }, [cardBody]);
+
+  const wrapper = el(
+    "div",
+    {
+      className: "col",
+      dataset: { id }, // wrapper.dataset.id
+    },
+    [card]
+  );
+
+  return wrapper;
 }
