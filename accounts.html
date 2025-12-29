@@ -27,7 +27,13 @@
       <div class="container">
         <a class="navbar-brand" href="index.html">Finance</a>
         <div class="ms-auto">
-          <button type="button" class="btn btn-outline-primary btn-sm" id="btnLogout">Logout</button>
+          <button
+            type="button"
+            class="btn btn-outline-primary btn-sm"
+            id="btnLogout"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </nav>
@@ -54,6 +60,7 @@
 
         <div
           class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3"
+          data-id="INCOME"
           id="incomeDiv"
         ></div>
       </section>
@@ -98,6 +105,7 @@
 
         <div
           class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3"
+          data-id="EXPENSE"
           id="expensesDiv"
         ></div>
       </section>
@@ -281,6 +289,62 @@
                     class="btn btn-primary"
                     type="submit"
                     id="addCategoryBtn"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Edit Category -->
+      <div
+        class="modal fade"
+        id="editCategoryModal"
+        tabindex="-1"
+        aria-labelledby="exampleModalLabel"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="exampleModalLabel">
+                Edit Category
+              </h1>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div id="alertBoxModalEditCategory"></div>
+            <div class="modal-body">
+              <form id="editCategoryForm" class="vstack gap-3">
+                <div class="mb-3">
+                  <label class="form-label">Title</label>
+                  <input
+                    id="newDescription"
+                    class="form-control"
+                    name="newDescription"
+                    type="text"
+                    required
+                  />
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    class="btn btn-primary"
+                    type="submit"
+                    id="saveCategoryBtn"
                   >
                     Submit
                   </button>
