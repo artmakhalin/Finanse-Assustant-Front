@@ -84,7 +84,25 @@ function bindEvents() {
     btn.addEventListener("click", onCategoryOpenerClick);
   }
 
-  addCategoryModal.addEventListener("hidden.bs.modal", onCategoryModalHidden);
+  addAccountModal.addEventListener(
+    "hidden.bs.modal",
+    onCreateAccountModalHidden
+  );
+
+  editAccountModal.addEventListener(
+    "hidden.bs.modal",
+    onEditAccountModalHidden
+  );
+
+  addCategoryModal.addEventListener(
+    "hidden.bs.modal",
+    onCreateCategoryModalHidden
+  );
+
+  editCategoryModal.addEventListener(
+    "hidden.bs.modal",
+    onEditCategoryModalHidden
+  );
 
   accountsDiv.addEventListener("click", onAccountsClick);
 
@@ -192,11 +210,16 @@ function bindEvents() {
   }
 
   async function onEditCategorySubmit(e) {
-    e.preventDefault;
+    e.preventDefault();
     if (!editingCategoryId || !currentCategoryType) return;
     const currentCategory = categoriesByType[currentCategoryType].find(
       (cat) => cat.categoryId == editingCategoryId
     );
+
+    if (!currentCategory) {
+      showAlert(alertBoxModalEditCategory, "danger", "Category not found");
+      return;
+    }
 
     await updateCategory(currentCategory);
   }
@@ -205,10 +228,28 @@ function bindEvents() {
     currentCategoryType = e.currentTarget.dataset.openerId;
   }
 
-  function onCategoryModalHidden() {
+  function onCreateAccountModalHidden() {
+    addAccountForm.reset();
+    alertBoxModalCreateAccount.innerHTML = "";
+  }
+
+  function onEditAccountModalHidden() {
+    editingAccountId = null;
+    editAccountForm.reset();
+    alertBoxModalEditAccount.innerHTML = "";
+  }
+
+  function onCreateCategoryModalHidden() {
     currentCategoryType = null;
     addCategoryForm.reset();
     alertBoxModalCreateCategory.innerHTML = "";
+  }
+
+  function onEditCategoryModalHidden() {
+    currentCategoryType = null;
+    editingCategoryId = null;
+    editCategoryForm.reset();
+    alertBoxModalEditCategory.innerHTML = "";
   }
 
   function onAccountsClick(e) {
@@ -216,6 +257,8 @@ function bindEvents() {
     const deleteBtn = e.target.closest("button.account-delete");
 
     if (deleteBtn) {
+      if (!confirm("Delete this Account?")) return;
+
       return deleteAccount(deleteBtn.dataset.id);
     }
 
@@ -235,9 +278,15 @@ function bindEvents() {
   }
 
   function onCategoriesClick(e) {
-    currentCategoryType = e.target.dataset.openerId;
+    const btn = e.target.closest(
+      "button.category-edit, button.category-delete"
+    );
+    if (!btn) return;
 
-    if (!currentCategoryType) {
+    const type = btn.dataset.openerId;
+    const id = btn.dataset.id;
+
+    if (!type) {
       showAlert(
         alertBoxModalCreateCategory,
         "danger",
@@ -245,17 +294,16 @@ function bindEvents() {
       );
       return;
     }
+    currentCategoryType = type;
 
-    const editBtn = e.target.closest("button.category-edit");
-    const deleteBtn = e.target.closest("button.category-delete");
+    if (btn.classList.contains("category-delete")) {
+      if (!confirm("Delete this Category?")) return;
 
-    if (deleteBtn) {
-      return deleteCategory(deleteBtn.dataset.id);
+      return deleteCategory(id, type);
     }
 
-    if (editBtn) {
+    if (btn.classList.contains("category-edit")) {
       alertBoxModalEditCategory.innerHTML = "";
-      const id = editBtn.dataset.id;
 
       const currentCategory = categoriesByType[currentCategoryType].find(
         (cat) => cat.categoryId == id
@@ -300,19 +348,15 @@ async function loadCategories() {
   }
 }
 
-async function deleteCategory(id) {
+async function deleteCategory(id, type) {
   try {
     await request(`${API_CATEGORIES}/${id}`, { method: "DELETE" });
     showAlert(alertBox, "success", "Category removed");
-    categoriesByType[currentCategoryType] = categoriesByType[
-      currentCategoryType
-    ].filter((cat) => cat.categoryId != id);
-
-    renderCategories(
-      categoriesByType[currentCategoryType],
-      currentCategoryType
+    categoriesByType[type] = categoriesByType[type].filter(
+      (cat) => cat.categoryId != id
     );
-    currentCategoryType = null;
+
+    renderCategories(categoriesByType[type], type);
   } catch (err) {
     showApiError(err, alertBox, {
       fallback: "Error when deleting categories",
@@ -382,9 +426,7 @@ async function updateCategory(currentCategory) {
     const type = currentCategory.type;
     const fd = new FormData(editCategoryForm);
 
-    //TODO - fix API
     const payLoad = {
-      id: id,
       description: fd.get("newDescription")?.trim(),
       type: type,
     };
@@ -434,7 +476,6 @@ function renderAccounts(accounts) {
 
 function renderCategories(categories, type) {
   const container = getContainerByType(type);
-  container.innerHTML = "";
 
   renderList(
     container,
