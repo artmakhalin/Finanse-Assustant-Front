@@ -3,12 +3,17 @@ import { request } from "../api.js";
 import { showAlert, showApiError } from "../ui.js";
 import { API_ACCOUNTS } from "../config.js";
 import { API_CATEGORIES } from "../config.js";
+import { API_TRANSACTIONS } from "../config.js";
 
 //Const / Labels
 const fieldLabels = {
   accountName: "Account title",
   balance: "Balance",
   description: "Category description",
+  accountTo: "Account To",
+  accountFrom: "Account From",
+  sum: "Sum of transaction",
+  categoryIdList: "Category of transaction",
 };
 
 const typeLabels = {
@@ -16,13 +21,21 @@ const typeLabels = {
   EXPENSE: "expenses",
 };
 
-const CATEGORY_TYPES = ["INCOME", "EXPENSE"];
+const CATEGORY_TYPES = ["INCOME", "EXPENSE", "TRANSFER"];
 
 //DOM
 const btnLogout = document.getElementById("btnLogout");
+const addTransactionBtn = document.getElementById("addTransactionBtn");
+
+const radioCategories = document.querySelectorAll(".form-check-input");
+
+const selectAccountFrom = document.getElementById("selectAccountFrom");
+const selectAccountTo = document.getElementById("selectAccountTo");
+const selectCategory = document.getElementById("selectCategory");
 
 const addAccountForm = document.getElementById("createAccountForm");
 const addCategoryForm = document.getElementById("createCategoryForm");
+const addTransactionForm = document.getElementById("addTransactionForm");
 const editAccountForm = document.getElementById("editAccountForm");
 const editCategoryForm = document.getElementById("editCategoryForm");
 
@@ -34,6 +47,9 @@ const alertBoxModalCreateAccount = document.getElementById(
 );
 const alertBoxModalCreateCategory = document.getElementById(
   "alertBoxModalCreateCategory"
+);
+const alertBoxModalCreateTransaction = document.getElementById(
+  "alertBoxModalCreateTransaction"
 );
 const alertBoxModalEditAccount = document.getElementById(
   "alertBoxModalEditAccount"
@@ -47,8 +63,9 @@ const incomeDiv = document.getElementById("incomeDiv");
 const expensesDiv = document.getElementById("expensesDiv");
 
 const addAccountModal = document.getElementById("addAccountModal");
-const editAccountModal = document.getElementById("editAccountModal");
 const addCategoryModal = document.getElementById("addCategoryModal");
+const addTransactionModal = document.getElementById("addTransactionModal");
+const editAccountModal = document.getElementById("editAccountModal");
 const editCategoryModal = document.getElementById("editCategoryModal");
 
 //State
@@ -79,9 +96,14 @@ function bindEvents() {
   editAccountForm.addEventListener("submit", onEditAccountSubmit);
   addCategoryForm.addEventListener("submit", onCreateCategorySubmit);
   editCategoryForm.addEventListener("submit", onEditCategorySubmit);
+  addTransactionForm.addEventListener("submit", onAddTransactionSubmit);
 
   for (const btn of categoryOpeners) {
     btn.addEventListener("click", onCategoryOpenerClick);
+  }
+
+  for (const radio of radioCategories) {
+    radio.addEventListener("change", onRadioCategoryChecked);
   }
 
   addAccountModal.addEventListener(
@@ -102,6 +124,16 @@ function bindEvents() {
   editCategoryModal.addEventListener(
     "hidden.bs.modal",
     onEditCategoryModalHidden
+  );
+
+  addTransactionModal.addEventListener(
+    "show.bs.modal",
+    onAddTransactionModalShown
+  );
+
+  addTransactionModal.addEventListener(
+    "hidden.bs.modal",
+    onAddTransactionModalHidden
   );
 
   accountsDiv.addEventListener("click", onAccountsClick);
@@ -224,8 +256,89 @@ function bindEvents() {
     await updateCategory(currentCategory);
   }
 
+  async function onAddTransactionSubmit(e) {
+    e.preventDefault();
+    alertBoxModalCreateTransaction.innerHTML = "";
+
+    const fd = new FormData(addTransactionForm);
+
+    const correctSum = validateBalance(
+      fd,
+      "sum",
+      alertBoxModalCreateTransaction
+    );
+    if (correctSum === null) return;
+
+    const currentCategoryId =
+      currentCategoryType == "TRANSFER"
+        ? categoriesByType["TRANSFER"][0].categoryId
+        : selectCategory.value;
+
+    const payload = {
+      accountTo: selectAccountTo.value ? selectAccountTo.value : null,
+      accountFrom: selectAccountFrom.value ? selectAccountFrom.value : null,
+      sum: correctSum,
+      categoryIdList: [currentCategoryId],
+    };
+
+    try {
+      const data = await request(`${API_TRANSACTIONS}`, {
+        method: "POST",
+        body: payload,
+      });
+
+      if (data) {
+        loadAccounts();
+        renderAccounts(accountsCache);
+
+        showAlert(alertBox, "success", "Transaction made");
+        hideModal(addTransactionModal);
+      }
+    } catch (err) {
+      showApiError(err, alertBoxModalCreateTransaction, {
+        fallback: "Error when creating transaction",
+        fieldLabels,
+      });
+    }
+  }
+
   function onCategoryOpenerClick(e) {
     currentCategoryType = e.currentTarget.dataset.openerId;
+  }
+
+  function onRadioCategoryChecked(e) {
+    currentCategoryType = e.target.value;
+
+    switch (currentCategoryType) {
+      case "TRANSFER":
+        selectCategory.value = "";
+        selectCategory.disabled = true;
+        selectAccountFrom.disabled = false;
+        selectAccountTo.disabled = false;
+        break;
+      case "INCOME":
+        selectCategory.disabled = false;
+        fillCategoriesSelect(
+          selectCategory,
+          currentCategoryType,
+          "Select Category"
+        );
+        selectAccountFrom.value = "";
+        selectAccountFrom.disabled = true;
+        selectAccountTo.disabled = false;
+        break;
+      case "EXPENSE":
+        selectCategory.disabled = false;
+        fillCategoriesSelect(
+          selectCategory,
+          currentCategoryType,
+          "Select Category"
+        );
+        selectAccountFrom.disabled = false;
+        selectAccountTo.value = "";
+        selectAccountTo.disabled = true;
+        break;
+    }
   }
 
   function onCreateAccountModalHidden() {
@@ -250,6 +363,68 @@ function bindEvents() {
     editingCategoryId = null;
     editCategoryForm.reset();
     alertBoxModalEditCategory.innerHTML = "";
+  }
+
+  function onAddTransactionModalHidden() {
+    addTransactionForm.reset();
+    alertBoxModalCreateTransaction.innerHTML = "";
+    currentCategoryType = null;
+  }
+
+  function onAddTransactionModalShown() {
+    selectCategory.disabled = false;
+    selectAccountFrom.disabled = true;
+    selectAccountTo.disabled = false;
+
+    fillAccountsSelect(selectAccountTo, accountsCache, "Select Account To");
+    fillAccountsSelect(selectAccountFrom, accountsCache, "Select Account From");
+    fillCategoriesSelect(selectCategory, "INCOME", "Select Category");
+  }
+
+  function fillAccountsSelect(selectEl, accounts, placeholderText) {
+    selectEl.innerHTML = "";
+
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = placeholderText;
+    ph.selected = true;
+    ph.disabled = true;
+    selectEl.appendChild(ph);
+
+    const frag = document.createDocumentFragment();
+
+    accounts.forEach((acc) => {
+      const opt = document.createElement("option");
+      opt.textContent = `${acc.accountName} (${acc.balance})`;
+      opt.value = acc.accountId;
+
+      frag.appendChild(opt);
+    });
+
+    selectEl.appendChild(frag);
+  }
+
+  function fillCategoriesSelect(selectEl, type, placeholderText) {
+    selectEl.innerHTML = "";
+
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = placeholderText;
+    ph.selected = true;
+    ph.disabled = true;
+    selectEl.appendChild(ph);
+
+    const frag = document.createDocumentFragment();
+
+    categoriesByType[type].forEach((cat) => {
+      const opt = document.createElement("option");
+      opt.textContent = `${cat.description}`;
+      opt.value = cat.categoryId;
+
+      frag.appendChild(opt);
+    });
+
+    selectEl.appendChild(frag);
   }
 
   function onAccountsClick(e) {
@@ -338,7 +513,9 @@ async function loadCategories() {
 
     CATEGORY_TYPES.forEach((t, i) => {
       categoriesByType[t] = results[i].list;
-      renderCategories(categoriesByType[t], t);
+      if (t !== "TRANSFER") {
+        renderCategories(categoriesByType[t], t);
+      }
     });
   } catch (err) {
     showApiError(err, alertBox, {

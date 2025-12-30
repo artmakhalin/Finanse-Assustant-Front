@@ -20,12 +20,22 @@
       src="./assets/js/pages/accounts.page.js"
       defer
     ></script>
-    <title>Finance</title>
+    <title>Accounts</title>
   </head>
   <body>
     <nav class="navbar navbar-expand-lg bg-white border-bottom">
       <div class="container">
-        <a class="navbar-brand" href="index.html">Finance</a>
+        <a class="navbar-brand" href="accounts.html">Accounts</a>
+        <a class="navbar-brand" href="report.html">Report</a>
+        <button
+          type="button"
+          class="btn btn-success btn-sm"
+          id="addTransactionBtn"
+          data-bs-toggle="modal"
+          data-bs-target="#addTransactionModal"
+        >
+          Make Transaction
+        </button>
         <div class="ms-auto">
           <button
             type="button"
@@ -345,6 +355,117 @@
                     class="btn btn-primary"
                     type="submit"
                     id="saveCategoryBtn"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Add Transaction -->
+      <div
+        class="modal fade"
+        id="addTransactionModal"
+        tabindex="-1"
+        aria-labelledby="exampleModalLabel"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="exampleModalLabel">
+                Make Transaction
+              </h1>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div id="alertBoxModalCreateTransaction"></div>
+            <div class="modal-body">
+              <form id="addTransactionForm" class="vstack gap-3">
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    name="TransactionType"
+                    id="radioIncome"
+                    value="INCOME"
+                    checked
+                  />
+                  <label class="form-check-label" for="radioIncome">
+                    Income
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    name="TransactionType"
+                    id="radioExpense"
+                    value="EXPENSE"
+                  />
+                  <label class="form-check-label" for="radioExpense">
+                    Expense
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    name="TransactionType"
+                    id="radioTransfer"
+                    value="TRANSFER"
+                  />
+                  <label class="form-check-label" for="radioTransfer">
+                    Transfer
+                  </label>
+                </div>
+                <select
+                  id="selectCategory"
+                  class="form-select"
+                  aria-label="Default select example"
+                >
+                </select>
+                <select
+                  id="selectAccountFrom"
+                  class="form-select"
+                  aria-label="Default select example"
+                >
+                </select>
+                <select
+                  id="selectAccountTo"
+                  class="form-select"
+                  aria-label="Default select example"
+                >
+                </select>
+                <div class="mb-3">
+                  <label class="form-label">Sum</label>
+                  <input
+                    class="form-control"
+                    name="sum"
+                    type="number"
+                    required
+                    min="0"
+                  />
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    class="btn btn-primary"
+                    type="submit"
+                    id="addCategoryBtn"
                   >
                     Submit
                   </button>
