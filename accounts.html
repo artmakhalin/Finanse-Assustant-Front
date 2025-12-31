@@ -20,12 +20,22 @@
       src="./assets/js/pages/accounts.page.js"
       defer
     ></script>
-    <title>Finance</title>
+    <title>Accounts</title>
   </head>
   <body>
     <nav class="navbar navbar-expand-lg bg-white border-bottom">
       <div class="container">
-        <a class="navbar-brand" href="index.html">Finance</a>
+        <a class="navbar-brand" href="accounts.html">Accounts</a>
+        <a class="navbar-brand" href="report.html">Report</a>
+        <button
+          type="button"
+          class="btn btn-success btn-sm"
+          id="addTransactionBtn"
+          data-bs-toggle="modal"
+          data-bs-target="#addTransactionModal"
+        >
+          Make Transaction
+        </button>
         <div class="ms-auto">
           <button
             type="button"
@@ -115,13 +125,13 @@
         class="modal fade"
         id="addAccountModal"
         tabindex="-1"
-        aria-labelledby="exampleModalLabel"
+        aria-labelledby="createAccountModalLabel"
         aria-hidden="true"
       >
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
-              <h1 class="modal-title fs-5" id="exampleModalLabel">
+              <h1 class="modal-title fs-5" id="createAccountModalLabel">
                 Create New Account
               </h1>
               <button
@@ -181,13 +191,13 @@
         class="modal fade"
         id="editAccountModal"
         tabindex="-1"
-        aria-labelledby="exampleModalLabel"
+        aria-labelledby="edotAccountModalLabel"
         aria-hidden="true"
       >
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
-              <h1 class="modal-title fs-5" id="exampleModalLabel">
+              <h1 class="modal-title fs-5" id="editAccountModalLabel">
                 Edit Account
               </h1>
               <button
@@ -249,13 +259,13 @@
         class="modal fade"
         id="addCategoryModal"
         tabindex="-1"
-        aria-labelledby="exampleModalLabel"
+        aria-labelledby="createCategoryModalLabel"
         aria-hidden="true"
       >
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
-              <h1 class="modal-title fs-5" id="exampleModalLabel">
+              <h1 class="modal-title fs-5" id="createCategoryModalLabel">
                 Create Category
               </h1>
               <button
@@ -304,13 +314,13 @@
         class="modal fade"
         id="editCategoryModal"
         tabindex="-1"
-        aria-labelledby="exampleModalLabel"
+        aria-labelledby="editCategoryModalLabel"
         aria-hidden="true"
       >
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
-              <h1 class="modal-title fs-5" id="exampleModalLabel">
+              <h1 class="modal-title fs-5" id="editCategoryModalLabel">
                 Edit Category
               </h1>
               <button
@@ -345,6 +355,117 @@
                     class="btn btn-primary"
                     type="submit"
                     id="saveCategoryBtn"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Add Transaction -->
+      <div
+        class="modal fade"
+        id="addTransactionModal"
+        tabindex="-1"
+        aria-labelledby="createTransactionModalLabel"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="createTransactionModalLabel">
+                Make Transaction
+              </h1>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div id="alertBoxModalCreateTransaction"></div>
+            <div class="modal-body">
+              <form id="addTransactionForm" class="vstack gap-3">
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    name="TransactionType"
+                    id="radioIncome"
+                    value="INCOME"
+                    checked
+                  />
+                  <label class="form-check-label" for="radioIncome">
+                    Income
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    name="TransactionType"
+                    id="radioExpense"
+                    value="EXPENSE"
+                  />
+                  <label class="form-check-label" for="radioExpense">
+                    Expense
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    name="TransactionType"
+                    id="radioTransfer"
+                    value="TRANSFER"
+                  />
+                  <label class="form-check-label" for="radioTransfer">
+                    Transfer
+                  </label>
+                </div>
+                <select
+                  id="selectCategory"
+                  class="form-select"
+                  aria-label="Select Category"
+                >
+                </select>
+                <select
+                  id="selectAccountFrom"
+                  class="form-select"
+                  aria-label="Select Account From"
+                >
+                </select>
+                <select
+                  id="selectAccountTo"
+                  class="form-select"
+                  aria-label="Select Account To"
+                >
+                </select>
+                <div class="mb-3">
+                  <label class="form-label">Sum</label>
+                  <input
+                    class="form-control"
+                    name="sum"
+                    type="number"
+                    required
+                    min="0"
+                  />
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    class="btn btn-primary"
+                    type="submit"
+                    id="addTransactionSubmitBtn"
                   >
                     Submit
                   </button>
