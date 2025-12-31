@@ -25,7 +25,6 @@ const CATEGORY_TYPES = ["INCOME", "EXPENSE", "TRANSFER"];
 
 //DOM
 const btnLogout = document.getElementById("btnLogout");
-const addTransactionBtn = document.getElementById("addTransactionBtn");
 
 const radioCategories = document.querySelectorAll(".form-check-input");
 
@@ -69,15 +68,13 @@ const editAccountModal = document.getElementById("editAccountModal");
 const editCategoryModal = document.getElementById("editCategoryModal");
 
 //State
-let accountsCache = [];
-const categoriesByType = {
-  INCOME: [],
-  EXPENSE: [],
-  TRANSFER: [],
+const state = {
+  accounts: [],
+  categoriesByType: { INCOME: [], EXPENSE: [], TRANSFER: [] },
+  editing: { accountId: null, categoryId: null },
+  currentCategoryType: null,
+  currentTransactionType: null,
 };
-let editingAccountId = null;
-let editingCategoryId = null;
-let currentCategoryType = null;
 
 //Start Page
 await requireAuth();
@@ -138,356 +135,393 @@ function bindEvents() {
 
   accountsDiv.addEventListener("click", onAccountsClick);
 
-  // на будущее (когда добавишь edit/delete категорий)
   incomeDiv.addEventListener("click", onCategoriesClick);
   expensesDiv.addEventListener("click", onCategoriesClick);
+}
 
-  async function onLogoutClick() {
-    await logout();
-  }
+async function onLogoutClick() {
+  await logout();
+}
 
-  async function onCreateAccountSubmit(e) {
-    e.preventDefault();
-    alertBoxModalCreateAccount.innerHTML = "";
+async function onCreateAccountSubmit(e) {
+  e.preventDefault();
+  alertBoxModalCreateAccount.innerHTML = "";
 
-    const fd = new FormData(addAccountForm);
+  const fd = new FormData(addAccountForm);
 
-    const correctBalance = validateBalance(
-      fd,
-      "balance",
-      alertBoxModalCreateAccount
-    );
-    if (correctBalance === null) return;
+  const correctBalance = validateMoneyAmount(
+    fd,
+    "balance",
+    alertBoxModalCreateAccount
+  );
+  if (correctBalance === null) return;
 
-    const payload = {
-      accountName: fd.get("accountName")?.trim(),
-      balance: correctBalance,
-    };
+  const payload = {
+    accountName: fd.get("accountName")?.trim(),
+    balance: correctBalance,
+  };
 
-    try {
-      const data = await request(`${API_ACCOUNTS}`, {
-        method: "POST",
-        body: payload,
-      });
+  try {
+    const data = await request(`${API_ACCOUNTS}`, {
+      method: "POST",
+      body: payload,
+    });
 
-      if (data) {
-        accountsCache.push(data);
-        renderAccounts(accountsCache);
+    if (data) {
+      state.accounts.push(data);
+      renderAccounts(state.accounts);
 
-        showAlert(alertBox, "success", "Account created");
-        addAccountForm.reset();
-        hideModal(addAccountModal);
-      }
-    } catch (err) {
-      showApiError(err, alertBoxModalCreateAccount, {
-        fallback: "Error when creating account",
-        fieldLabels,
-      });
+      showAlert(alertBox, "success", "Account created");
+      addAccountForm.reset();
+      hideModal(addAccountModal);
     }
+  } catch (err) {
+    showApiError(err, alertBoxModalCreateAccount, {
+      fallback: "Error when creating account",
+      fieldLabels,
+    });
   }
+}
 
-  async function onEditAccountSubmit(e) {
-    e.preventDefault();
-    if (!editingAccountId) return;
-    const currentAccount = accountsCache.find(
-      (acc) => acc.accountId == editingAccountId
+async function onEditAccountSubmit(e) {
+  e.preventDefault();
+  if (!state.editing.accountId) return;
+  const currentAccount = state.accounts.find(
+    (acc) => acc.accountId == state.editing.accountId
+  );
+
+  await updateAccount(currentAccount);
+}
+
+async function onCreateCategorySubmit(e) {
+  e.preventDefault();
+  alertBoxModalCreateCategory.innerHTML = "";
+
+  if (!state.currentCategoryType) {
+    showAlert(
+      alertBoxModalCreateCategory,
+      "danger",
+      "Choose category type first"
     );
-
-    await updateAccount(currentAccount);
+    return;
   }
 
-  async function onCreateCategorySubmit(e) {
-    e.preventDefault();
-    alertBoxModalCreateCategory.innerHTML = "";
+  const fd = new FormData(addCategoryForm);
 
-    if (!currentCategoryType) {
-      showAlert(
-        alertBoxModalCreateCategory,
-        "danger",
-        "Choose category type first"
+  const payload = {
+    description: fd.get("description")?.trim(),
+    type: state.currentCategoryType,
+  };
+
+  try {
+    const data = await request(`${API_CATEGORIES}`, {
+      method: "POST",
+      body: payload,
+    });
+
+    if (data) {
+      state.categoriesByType[state.currentCategoryType].push(data);
+      renderCategories(
+        state.categoriesByType[state.currentCategoryType],
+        state.currentCategoryType
       );
-      return;
+
+      showAlert(alertBox, "success", "Category created");
+      addCategoryForm.reset();
+      hideModal(addCategoryModal);
     }
+  } catch (err) {
+    showApiError(err, alertBoxModalCreateCategory, {
+      fallback: "Error when creating category",
+      fieldLabels,
+    });
+  }
+}
 
-    const fd = new FormData(addCategoryForm);
+async function onEditCategorySubmit(e) {
+  e.preventDefault();
+  if (!state.editing.categoryId || !state.currentCategoryType) return;
+  const currentCategory = state.categoriesByType[
+    state.currentCategoryType
+  ].find((cat) => cat.categoryId == state.editing.categoryId);
 
-    const payload = {
-      description: fd.get("description")?.trim(),
-      type: currentCategoryType,
-    };
-
-    try {
-      const data = await request(`${API_CATEGORIES}`, {
-        method: "POST",
-        body: payload,
-      });
-
-      if (data) {
-        categoriesByType[currentCategoryType].push(data);
-        renderCategories(
-          categoriesByType[currentCategoryType],
-          currentCategoryType
-        );
-
-        showAlert(alertBox, "success", "Category created");
-        addCategoryForm.reset();
-        hideModal(addCategoryModal);
-      }
-    } catch (err) {
-      showApiError(err, alertBoxModalCreateCategory, {
-        fallback: "Error when creating category",
-        fieldLabels,
-      });
-    }
+  if (!currentCategory) {
+    showAlert(alertBoxModalEditCategory, "danger", "Category not found");
+    return;
   }
 
-  async function onEditCategorySubmit(e) {
-    e.preventDefault();
-    if (!editingCategoryId || !currentCategoryType) return;
-    const currentCategory = categoriesByType[currentCategoryType].find(
-      (cat) => cat.categoryId == editingCategoryId
-    );
+  await updateCategory(currentCategory);
+}
 
-    if (!currentCategory) {
-      showAlert(alertBoxModalEditCategory, "danger", "Category not found");
-      return;
-    }
+async function onAddTransactionSubmit(e) {
+  e.preventDefault();
+  alertBoxModalCreateTransaction.innerHTML = "";
 
-    await updateCategory(currentCategory);
-  }
+  const fd = new FormData(addTransactionForm);
 
-  async function onAddTransactionSubmit(e) {
-    e.preventDefault();
-    alertBoxModalCreateTransaction.innerHTML = "";
+  const correctSum = validateMoneyAmount(
+    fd,
+    "sum",
+    alertBoxModalCreateTransaction
+  );
+  if (correctSum === null) return;
 
-    const fd = new FormData(addTransactionForm);
+  let currentCategoryId = selectCategory.value;
+  const errors = [];
 
-    const correctSum = validateBalance(
-      fd,
-      "sum",
-      alertBoxModalCreateTransaction
-    );
-    if (correctSum === null) return;
-
-    const currentCategoryId =
-      currentCategoryType == "TRANSFER"
-        ? categoriesByType["TRANSFER"][0].categoryId
-        : selectCategory.value;
-
-    const payload = {
-      accountTo: selectAccountTo.value ? selectAccountTo.value : null,
-      accountFrom: selectAccountFrom.value ? selectAccountFrom.value : null,
-      sum: correctSum,
-      categoryIdList: [currentCategoryId],
-    };
-
-    try {
-      const data = await request(`${API_TRANSACTIONS}`, {
-        method: "POST",
-        body: payload,
-      });
-
-      if (data) {
-        loadAccounts();
-        renderAccounts(accountsCache);
-
-        showAlert(alertBox, "success", "Transaction made");
-        hideModal(addTransactionModal);
-      }
-    } catch (err) {
-      showApiError(err, alertBoxModalCreateTransaction, {
-        fallback: "Error when creating transaction",
-        fieldLabels,
-      });
+  if (state.currentTransactionType === "TRANSFER") {
+    const transferCat = state.categoriesByType["TRANSFER"][0];
+    if (transferCat) {
+      currentCategoryId = transferCat.categoryId;
+    } else {
+      errors.push("Transfer category not found");
     }
   }
 
-  function onCategoryOpenerClick(e) {
-    currentCategoryType = e.currentTarget.dataset.openerId;
-  }
+  if (state.currentTransactionType === "TRANSFER") {
+    if (!selectAccountFrom.value || !selectAccountTo.value) {
+      errors.push("Account From and Account To can't be empty");
+    }
 
-  function onRadioCategoryChecked(e) {
-    currentCategoryType = e.target.value;
-
-    switch (currentCategoryType) {
-      case "TRANSFER":
-        selectCategory.value = "";
-        selectCategory.disabled = true;
-        selectAccountFrom.disabled = false;
-        selectAccountTo.disabled = false;
-        break;
-      case "INCOME":
-        selectCategory.disabled = false;
-        fillCategoriesSelect(
-          selectCategory,
-          currentCategoryType,
-          "Select Category"
-        );
-        selectAccountFrom.value = "";
-        selectAccountFrom.disabled = true;
-        selectAccountTo.disabled = false;
-        break;
-      case "EXPENSE":
-        selectCategory.disabled = false;
-        fillCategoriesSelect(
-          selectCategory,
-          currentCategoryType,
-          "Select Category"
-        );
-        selectAccountFrom.disabled = false;
-        selectAccountTo.value = "";
-        selectAccountTo.disabled = true;
-        break;
+    if (selectAccountFrom.value === selectAccountTo.value) {
+      errors.push("Account From and Account To should be different");
     }
   }
 
-  function onCreateAccountModalHidden() {
-    addAccountForm.reset();
-    alertBoxModalCreateAccount.innerHTML = "";
+  if (state.currentTransactionType === "INCOME") {
+    if (!selectAccountTo.value) {
+      errors.push("Account To can't be empty");
+    }
+    if (!selectCategory.value) {
+      errors.push("Transaction category can't be empty");
+    }
   }
 
-  function onEditAccountModalHidden() {
-    editingAccountId = null;
-    editAccountForm.reset();
-    alertBoxModalEditAccount.innerHTML = "";
+  if (state.currentTransactionType === "EXPENSE") {
+    if (!selectAccountFrom.value) {
+      errors.push("Account From can't be empty");
+    }
+    if (!selectCategory.value) {
+      errors.push("Transaction category can't be empty");
+    }
   }
 
-  function onCreateCategoryModalHidden() {
-    currentCategoryType = null;
-    addCategoryForm.reset();
-    alertBoxModalCreateCategory.innerHTML = "";
+  if (errors.length) {
+    showAlert(alertBoxModalCreateTransaction, "danger", errors.join(" | "));
+    return;
   }
 
-  function onEditCategoryModalHidden() {
-    currentCategoryType = null;
-    editingCategoryId = null;
-    editCategoryForm.reset();
-    alertBoxModalEditCategory.innerHTML = "";
+  const payload = {
+    accountTo: selectAccountTo.value ? selectAccountTo.value : null,
+    accountFrom: selectAccountFrom.value ? selectAccountFrom.value : null,
+    sum: correctSum,
+    categoryIdList: [currentCategoryId],
+  };
+
+  try {
+    const data = await request(`${API_TRANSACTIONS}`, {
+      method: "POST",
+      body: payload,
+    });
+
+    if (data) {
+      await loadAccounts();
+
+      showAlert(alertBox, "success", "Transaction made");
+      hideModal(addTransactionModal);
+    }
+  } catch (err) {
+    showApiError(err, alertBoxModalCreateTransaction, {
+      fallback: "Error when creating transaction",
+      fieldLabels,
+    });
+  }
+}
+
+function onCategoryOpenerClick(e) {
+  state.currentCategoryType = e.currentTarget.dataset.openerId;
+}
+
+function onRadioCategoryChecked(e) {
+  applyTransactionType(e.target.value);
+}
+
+function applyTransactionType(type) {
+  state.currentTransactionType = type;
+
+  if (type === "TRANSFER") {
+    selectCategory.value = "";
+    selectCategory.disabled = true;
+    selectAccountFrom.disabled = false;
+    selectAccountTo.disabled = false;
+    return;
   }
 
-  function onAddTransactionModalHidden() {
-    addTransactionForm.reset();
-    alertBoxModalCreateTransaction.innerHTML = "";
-    currentCategoryType = null;
-  }
+  selectCategory.disabled = false;
+  fillCategoriesSelect(selectCategory, type, "Select Category");
 
-  function onAddTransactionModalShown() {
-    selectCategory.disabled = false;
+  if (type === "INCOME") {
+    selectAccountFrom.value = "";
     selectAccountFrom.disabled = true;
     selectAccountTo.disabled = false;
-
-    fillAccountsSelect(selectAccountTo, accountsCache, "Select Account To");
-    fillAccountsSelect(selectAccountFrom, accountsCache, "Select Account From");
-    fillCategoriesSelect(selectCategory, "INCOME", "Select Category");
   }
 
-  function fillAccountsSelect(selectEl, accounts, placeholderText) {
-    selectEl.innerHTML = "";
+  if (type === "EXPENSE") {
+    selectAccountFrom.disabled = false;
+    selectAccountTo.value = "";
+    selectAccountTo.disabled = true;
+  }
+}
 
-    const ph = document.createElement("option");
-    ph.value = "";
-    ph.textContent = placeholderText;
-    ph.selected = true;
-    ph.disabled = true;
-    selectEl.appendChild(ph);
+function onCreateAccountModalHidden() {
+  addAccountForm.reset();
+  alertBoxModalCreateAccount.innerHTML = "";
+}
 
-    const frag = document.createDocumentFragment();
+function onEditAccountModalHidden() {
+  state.editing.accountId = null;
+  editAccountForm.reset();
+  alertBoxModalEditAccount.innerHTML = "";
+}
 
-    accounts.forEach((acc) => {
-      const opt = document.createElement("option");
-      opt.textContent = `${acc.accountName} (${acc.balance})`;
-      opt.value = acc.accountId;
+function onCreateCategoryModalHidden() {
+  state.currentCategoryType = null;
+  addCategoryForm.reset();
+  alertBoxModalCreateCategory.innerHTML = "";
+}
 
-      frag.appendChild(opt);
-    });
+function onEditCategoryModalHidden() {
+  state.currentCategoryType = null;
+  state.editing.categoryId = null;
+  editCategoryForm.reset();
+  alertBoxModalEditCategory.innerHTML = "";
+}
 
-    selectEl.appendChild(frag);
+function onAddTransactionModalHidden() {
+  addTransactionForm.reset();
+  alertBoxModalCreateTransaction.innerHTML = "";
+  state.currentTransactionType = null;
+}
+
+function onAddTransactionModalShown() {
+  const radioTransfer = document.getElementById("radioTransfer");
+  radioTransfer.disabled = !state.categoriesByType.TRANSFER?.length;
+
+  if (radioTransfer.disabled && radioTransfer.checked) {
+    document.getElementById("radioIncome").checked = true;
   }
 
-  function fillCategoriesSelect(selectEl, type, placeholderText) {
-    selectEl.innerHTML = "";
+  fillAccountsSelect(selectAccountTo, state.accounts, "Select Account To");
+  fillAccountsSelect(selectAccountFrom, state.accounts, "Select Account From");
 
-    const ph = document.createElement("option");
-    ph.value = "";
-    ph.textContent = placeholderText;
-    ph.selected = true;
-    ph.disabled = true;
-    selectEl.appendChild(ph);
+  const checked = addTransactionForm.elements["TransactionType"].value;
+  applyTransactionType(checked);
+}
 
-    const frag = document.createDocumentFragment();
+function fillAccountsSelect(selectEl, accounts, placeholderText) {
+  selectEl.innerHTML = "";
 
-    categoriesByType[type].forEach((cat) => {
-      const opt = document.createElement("option");
-      opt.textContent = `${cat.description}`;
-      opt.value = cat.categoryId;
+  const ph = document.createElement("option");
+  ph.value = "";
+  ph.textContent = placeholderText;
+  ph.selected = true;
+  ph.disabled = true;
+  selectEl.appendChild(ph);
 
-      frag.appendChild(opt);
-    });
+  const frag = document.createDocumentFragment();
 
-    selectEl.appendChild(frag);
+  accounts.forEach((acc) => {
+    const opt = document.createElement("option");
+    opt.textContent = `${acc.accountName} (${acc.balance})`;
+    opt.value = acc.accountId;
+
+    frag.appendChild(opt);
+  });
+
+  selectEl.appendChild(frag);
+}
+
+function fillCategoriesSelect(selectEl, type, placeholderText) {
+  selectEl.innerHTML = "";
+
+  const ph = document.createElement("option");
+  ph.value = "";
+  ph.textContent = placeholderText;
+  ph.selected = true;
+  ph.disabled = true;
+  selectEl.appendChild(ph);
+
+  const frag = document.createDocumentFragment();
+
+  state.categoriesByType[type].forEach((cat) => {
+    const opt = document.createElement("option");
+    opt.textContent = `${cat.description}`;
+    opt.value = cat.categoryId;
+
+    frag.appendChild(opt);
+  });
+
+  selectEl.appendChild(frag);
+}
+
+function onAccountsClick(e) {
+  const editBtn = e.target.closest("button.account-edit");
+  const deleteBtn = e.target.closest("button.account-delete");
+
+  if (deleteBtn) {
+    if (!confirm("Delete this Account?")) return;
+
+    return deleteAccount(deleteBtn.dataset.id);
   }
 
-  function onAccountsClick(e) {
-    const editBtn = e.target.closest("button.account-edit");
-    const deleteBtn = e.target.closest("button.account-delete");
+  if (editBtn) {
+    alertBoxModalEditAccount.innerHTML = "";
+    const id = editBtn.dataset.id;
 
-    if (deleteBtn) {
-      if (!confirm("Delete this Account?")) return;
+    const currentAccount = state.accounts.find((acc) => acc.accountId == id);
+    state.editing.accountId = id;
 
-      return deleteAccount(deleteBtn.dataset.id);
-    }
+    const newNameInput = document.getElementById("newAccountName");
+    const newBalanceInput = document.getElementById("newBalance");
 
-    if (editBtn) {
-      alertBoxModalEditAccount.innerHTML = "";
-      const id = editBtn.dataset.id;
-
-      const currentAccount = accountsCache.find((acc) => acc.accountId == id);
-      editingAccountId = id;
-
-      const newNameInput = document.getElementById("newAccountName");
-      const newBalanceInput = document.getElementById("newBalance");
-
-      newNameInput.value = currentAccount.accountName;
-      newBalanceInput.value = currentAccount.balance;
-    }
+    newNameInput.value = currentAccount.accountName;
+    newBalanceInput.value = currentAccount.balance;
   }
+}
 
-  function onCategoriesClick(e) {
-    const btn = e.target.closest(
-      "button.category-edit, button.category-delete"
+function onCategoriesClick(e) {
+  const btn = e.target.closest("button.category-edit, button.category-delete");
+  if (!btn) return;
+
+  const type = btn.dataset.openerId;
+  const id = btn.dataset.id;
+
+  if (!type) {
+    showAlert(
+      alertBoxModalCreateCategory,
+      "danger",
+      "Choose category type first"
     );
-    if (!btn) return;
+    return;
+  }
+  state.currentCategoryType = type;
 
-    const type = btn.dataset.openerId;
-    const id = btn.dataset.id;
+  if (btn.classList.contains("category-delete")) {
+    if (!confirm("Delete this Category?")) return;
 
-    if (!type) {
-      showAlert(
-        alertBoxModalCreateCategory,
-        "danger",
-        "Choose category type first"
-      );
-      return;
-    }
-    currentCategoryType = type;
+    return deleteCategory(id, type);
+  }
 
-    if (btn.classList.contains("category-delete")) {
-      if (!confirm("Delete this Category?")) return;
+  if (btn.classList.contains("category-edit")) {
+    alertBoxModalEditCategory.innerHTML = "";
 
-      return deleteCategory(id, type);
-    }
+    const currentCategory = state.categoriesByType[
+      state.currentCategoryType
+    ].find((cat) => cat.categoryId == id);
+    state.editing.categoryId = id;
 
-    if (btn.classList.contains("category-edit")) {
-      alertBoxModalEditCategory.innerHTML = "";
-
-      const currentCategory = categoriesByType[currentCategoryType].find(
-        (cat) => cat.categoryId == id
-      );
-      editingCategoryId = id;
-
-      const newDescriptionInput = document.getElementById("newDescription");
-      newDescriptionInput.value = currentCategory.description;
-    }
+    const newDescriptionInput = document.getElementById("newDescription");
+    newDescriptionInput.value = currentCategory.description;
   }
 }
 
@@ -495,8 +529,8 @@ function bindEvents() {
 async function loadAccounts() {
   try {
     const data = await request(`${API_ACCOUNTS}`);
-    accountsCache = data.list;
-    renderAccounts(accountsCache);
+    state.accounts = data.list;
+    renderAccounts(state.accounts);
   } catch (err) {
     showApiError(err, alertBox, {
       fallback: "Error when loading account",
@@ -512,9 +546,9 @@ async function loadCategories() {
     );
 
     CATEGORY_TYPES.forEach((t, i) => {
-      categoriesByType[t] = results[i].list;
+      state.categoriesByType[t] = results[i].list;
       if (t !== "TRANSFER") {
-        renderCategories(categoriesByType[t], t);
+        renderCategories(state.categoriesByType[t], t);
       }
     });
   } catch (err) {
@@ -529,11 +563,11 @@ async function deleteCategory(id, type) {
   try {
     await request(`${API_CATEGORIES}/${id}`, { method: "DELETE" });
     showAlert(alertBox, "success", "Category removed");
-    categoriesByType[type] = categoriesByType[type].filter(
+    state.categoriesByType[type] = state.categoriesByType[type].filter(
       (cat) => cat.categoryId != id
     );
 
-    renderCategories(categoriesByType[type], type);
+    renderCategories(state.categoriesByType[type], type);
   } catch (err) {
     showApiError(err, alertBox, {
       fallback: "Error when deleting categories",
@@ -546,9 +580,9 @@ async function deleteAccount(id) {
   try {
     await request(`${API_ACCOUNTS}/${id}`, { method: "DELETE" });
     showAlert(alertBox, "success", "Account removed");
-    accountsCache = accountsCache.filter((acc) => acc.accountId != id);
+    state.accounts = state.accounts.filter((acc) => acc.accountId != id);
 
-    renderAccounts(accountsCache);
+    renderAccounts(state.accounts);
   } catch (err) {
     showApiError(err, alertBox, {
       fallback: "Error when deleting account",
@@ -562,7 +596,7 @@ async function updateAccount(currentAccount) {
     const id = currentAccount.accountId;
     const fd = new FormData(editAccountForm);
 
-    const correctBalance = validateBalance(
+    const correctBalance = validateMoneyAmount(
       fd,
       "newBalance",
       alertBoxModalEditAccount
@@ -580,14 +614,14 @@ async function updateAccount(currentAccount) {
       body: payload,
     });
 
-    accountsCache = accountsCache.map((acc) =>
+    state.accounts = state.accounts.map((acc) =>
       acc.accountId == id ? updatedAccount : acc
     );
-    renderAccounts(accountsCache);
+    renderAccounts(state.accounts);
 
     showAlert(alertBox, "success", "Account updated");
     editAccountForm.reset();
-    editingAccountId = null;
+    state.editing.accountId = null;
     hideModal(editAccountModal);
   } catch (err) {
     showApiError(err, alertBoxModalEditAccount, {
@@ -613,15 +647,15 @@ async function updateCategory(currentCategory) {
       body: payLoad,
     });
 
-    categoriesByType[type] = categoriesByType[type].map((cat) =>
+    state.categoriesByType[type] = state.categoriesByType[type].map((cat) =>
       cat.categoryId == id ? updatedCategory : cat
     );
-    renderCategories(categoriesByType[type], type);
+    renderCategories(state.categoriesByType[type], type);
 
     showAlert(alertBox, "success", "Category updated");
     editCategoryForm.reset();
-    editingCategoryId = null;
-    currentCategoryType = null;
+    state.editing.categoryId = null;
+    state.currentCategoryType = null;
     hideModal(editCategoryModal);
   } catch (err) {
     showApiError(err, alertBoxModalEditCategory, {
@@ -693,10 +727,10 @@ function hideModal(modal) {
   thisModal.hide();
 }
 
-function validateBalance(formData, fieldName, box) {
+function validateMoneyAmount(formData, fieldName, box) {
   const balance = Number(formData.get(fieldName));
   if (!Number.isFinite(balance) || balance < 0) {
-    showAlert(box, "danger", "Invalid balance");
+    showAlert(box, "danger", "Invalid money amount");
     return null;
   }
   return balance;

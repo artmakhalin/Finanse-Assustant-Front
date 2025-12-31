@@ -28,6 +28,14 @@ async function onLogoutClick() {
 async function onReportSubmit(e) {
   e.preventDefault();
   const fd = new FormData(reportFrom);
+  const from = fd.get("startDate");
+  const till = fd.get("endDate");
+
+  if (from && till && from > till) {
+    showAlert(alertBox, "danger", "End date should be after start date");
+    reportDiv.innerHTML = "";
+    return;
+  }
 
   const payload = {
     from: fd.get("startDate"),
@@ -40,12 +48,12 @@ async function onReportSubmit(e) {
       method: "POST",
       body: payload,
     });
-    console.log(data.list);
 
     if (data.list.length > 0) {
-        renderReport(payload, data.list);
+      renderReport(payload, data.list);
     } else {
-        showAlert(alertBox, "warning", "No transactions found");
+      showAlert(alertBox, "warning", "No transactions found");
+      reportDiv.innerHTML = "";
     }
     reportFrom.reset();
   } catch (err) {
@@ -81,5 +89,5 @@ function renderReport(payload, data) {
 }
 
 function clearReportContainer() {
-    reportDiv.innerHTML = "";
+  reportDiv.innerHTML = "";
 }
