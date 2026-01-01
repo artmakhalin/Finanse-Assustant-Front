@@ -5,7 +5,7 @@ export async function requireAuth() {
     await request("/api/get-user-info");
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) {
-      window.location.href = "login.html";
+      window.location.href = "index.html";
       return;
     }
     console.error(e);
@@ -15,7 +15,7 @@ export async function requireAuth() {
 export async function logout() {
   try {
     await request("/api/auth/logout", { method: "POST" });
-    window.location.href = "login.html";
+    window.location.href = "index.html";
   } catch (err) {
     console.error(err);
   }

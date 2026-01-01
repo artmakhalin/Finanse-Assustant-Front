@@ -11,24 +11,34 @@ const labels = {
 
 const form = document.getElementById("registerForm");
 const alertBox = document.getElementById("alertBox");
-const pass1 = document.getElementsByName("password")[0];
-const pass2Input = document.getElementsByName("password2")[0];
-const pass2 = document.getElementById("pass2");
+const pass1 = form.elements["password"];
+const pass2Input = form.elements["password2"];
+const pass2Wrap = document.getElementById("pass2");
 const btnSubmit = document.getElementById("btnSubmit");
 
-pass2.style.display = "none";
+syncPass2Visibility();
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   alertBox.innerHTML = "";
 
-  if (pass1.value !== pass2Input.value) {
-    pass2.style.display = "block";
-    showAlert(alertBox, "warning", "Passwords do not match");
-    pass1.classList.add("is-invalid");
-    pass2Input.classList.add("is-invalid");
+  if (pass1.value) {
+    setPass2Visible(true);
 
-    return;
+    if (!pass2Input.value) {
+      showAlert(alertBox, "warning", "Please repeat your password");
+      pass2Input.classList.add("is-invalid");
+      pass2Input.focus();
+      return;
+    }
+
+    if (pass1.value !== pass2Input.value) {
+      showAlert(alertBox, "warning", "Passwords do not match");
+      pass1.classList.add("is-invalid");
+      pass2Input.classList.add("is-invalid");
+      pass2Input.focus();
+      return;
+    }
   }
 
   const fd = new FormData(form);
@@ -52,11 +62,11 @@ form.addEventListener("submit", async (e) => {
       "flash",
       "Registration was successful. Please, sign in"
     );
-    window.location.href = "login.html";
+    window.location.href = "index.html";
   } catch (err) {
     showApiError(err, alertBox, {
       fallback: "Error during registration",
-      labels
+      labels,
     });
   } finally {
     btnSubmit.disabled = false;
@@ -64,10 +74,26 @@ form.addEventListener("submit", async (e) => {
 });
 
 pass1.addEventListener("input", () => {
-  pass2.style.display = pass1.value ? "block" : "none";
+  syncPass2Visibility();
   pass1.classList.remove("is-invalid");
+  pass2Input.classList.remove("is-invalid");
 });
 
 pass2Input.addEventListener("input", () => {
   pass2Input.classList.remove("is-invalid");
 });
+
+function syncPass2Visibility() {
+  setPass2Visible(Boolean(pass1.value));
+}
+
+function setPass2Visible(visible) {
+  pass2Wrap.classList.toggle("d-none", !visible);
+  pass2Input.required = visible;
+
+  if (!visible) {
+    // очищаем confirm при скрытии
+    pass2Input.value = "";
+    pass2Input.classList.remove("is-invalid");
+  }
+}
